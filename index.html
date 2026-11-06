@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OMR AutoGrader — Offline Classroom Edition</title>
+  <meta name="description" content="Grade bubble answer sheets offline. Build answer keys, scan with a camera or a photo, analyse item difficulty and print student reports.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="vendor/fa.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/tailwind.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+</head>
+<body class="min-h-screen pb-16 text-slate-100">
+
+  <header class="aurora-card sticky top-0 z-40 border-b border-slate-700/50 mb-6 px-3 sm:px-6 py-3">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-3">
+      <div class="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-indigo-600/30 rounded-lg border border-indigo-400/30">
+            <i class="fa-solid fa-microchip text-indigo-400 text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-base sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 leading-tight">
+              OMR AutoGrader
+            </h1>
+            <p class="text-[10px] text-slate-400 leading-tight">Offline classroom edition</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-wrap justify-end">
+          <button id="install-btn" onclick="App.installPwa()" class="hidden ghost-btn px-2 py-1 rounded text-[11px] font-semibold text-emerald-300">
+            <i class="fa-solid fa-download mr-1"></i>Install
+          </button>
+          <button id="offline-btn" onclick="App.prepareOffline()" class="ghost-btn px-2 py-1 rounded text-[11px] text-slate-300" title="Download the app for offline use">
+            <i class="fa-solid fa-wifi mr-1"></i><span id="offline-label">Offline</span>
+          </button>
+          <span id="cv-status" class="text-[11px] px-2 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Loading engine…
+          </span>
+        </div>
+      </div>
+
+      <nav class="grid grid-cols-4 gap-1.5 w-full lg:w-auto text-center">
+        <button onclick="App.switchTab('generator')" id="tab-generator" class="px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-sm font-medium aurora-btn text-white">Generator</button>
+        <button onclick="App.switchTab('scanner')" id="tab-scanner" class="px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Scanner</button>
+        <button onclick="App.switchTab('students')" id="tab-students" class="px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Students</button>
+        <button onclick="App.switchTab('analysis')" id="tab-analysis" class="px-2 sm:px-3 py-2 rounded-lg text-[11px] sm:text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">Analysis</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-3 sm:px-6">
+
+    <!-- ============ GENERATOR ============ -->
+    <section id="sec-generator" class="space-y-6">
+
+      <div class="speech-bubble">
+        <i class="fa-solid fa-circle-info mr-2"></i>Set your exam layout, download the printable sheet, then print one copy to fill in as the answer key.
+      </div>
+
+      <div class="aurora-card p-4 sm:p-6 rounded-2xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 class="text-lg font-semibold text-indigo-300"><i class="fa-solid fa-sliders mr-2"></i>Sheet Layout Setup</h2>
+          <button onclick="App.openHelp()" class="ghost-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300">
+            <i class="fa-solid fa-circle-question mr-1"></i>How it works
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Exam / Test Title (printed on the sheet)</label>
+            <input type="text" id="gen-title" maxlength="52" placeholder="e.g. Science 7 — Quarter 2 Periodical" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Number of Test Items</label>
+            <input type="number" id="gen-item-count" min="5" max="40" value="20" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Choices per Item</label>
+            <select id="gen-choices-count" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <option value="4">4 Choices (A, B, C, D)</option>
+              <option value="5">5 Choices (A, B, C, D, E)</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="flex items-start gap-2 text-xs text-slate-400 mt-4">
+          <input type="checkbox" id="gen-mark-key" class="accent-indigo-500 w-4 h-4 mt-0.5">
+          <span>Stamp <strong class="text-slate-200">“ANSWER KEY COPY”</strong> on this print — use it for the copy you fill in yourself.</span>
+        </label>
+
+        <p class="text-xs text-slate-500 mt-4 leading-relaxed">
+          Print one <strong>marked</strong> copy for yourself to build the answer key (fill it in and scan it in the Scanner tab), then print blank copies for students.
+          Students bubble in their <strong>7-digit Student ID</strong> on the generated form, so scanned sheets are matched to names automatically.
+        </p>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button onclick="App.generateSheet()" class="aurora-btn px-6 py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center">
+            <i class="fa-solid fa-file-arrow-down mr-2"></i>Download High-Precision PDF
+          </button>
+          <button onclick="App.switchTab('scanner')" class="ghost-btn px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-200">
+            <i class="fa-solid fa-key mr-2"></i>Go build the answer key
+          </button>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-slate-700/60 bg-slate-950/40 p-3 text-[11px] leading-relaxed text-slate-400">
+          <strong class="text-slate-300">Printing tips:</strong> print at <strong>100% / “Actual size”</strong> (no “fit to page”), on white paper, in black ink.
+          The four black corner squares must stay fully inside the page — they are what the camera locks onto.
+          One sheet holds up to <strong class="text-slate-300">40 items</strong> (two columns of 20); for longer tests, split the exam into parts.
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SCANNER ============ -->
+    <section id="sec-scanner" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <div class="lg:col-span-5 aurora-card p-4 sm:p-6 rounded-2xl space-y-4">
+          <h2 class="text-lg font-semibold text-indigo-300"><i class="fa-solid fa-key mr-2"></i>Answer Keys</h2>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Load Saved Key</label>
+            <select id="section-select" onchange="App.loadSectionIntoEditor(this.value)" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <option value="">— New key —</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Section / Exam Name</label>
+            <input type="text" id="key-section-name" placeholder="e.g. Grade 7 — Science" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Items</label>
+              <input type="number" id="key-item-count" min="5" max="40" value="20" onchange="App.buildKeyEditor()" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1">Choices</label>
+              <select id="key-choices-count" onchange="App.buildKeyEditor()" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                <option value="4">4 (A–D)</option>
+                <option value="5">5 (A–E)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] text-slate-400 px-1">
+            <span id="key-summary">20 items · 4 choices</span>
+            <button onclick="App.setAllKeyAnswers('A')" class="text-indigo-300 hover:text-indigo-200">Reset to A</button>
+          </div>
+
+          <div id="key-container" class="max-h-64 overflow-y-auto space-y-2 pr-1 border border-slate-800 p-3 rounded-xl bg-slate-950/60"></div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="App.openCameraModal('key')" class="ghost-btn py-2 rounded-lg text-xs font-semibold text-indigo-200 flex items-center justify-center">
+              <i class="fa-solid fa-camera mr-2"></i>Scan Key
+            </button>
+            <button onclick="App.saveCurrentKey()" class="aurora-btn py-2 rounded-lg text-xs font-semibold text-white flex items-center justify-center">
+              <i class="fa-solid fa-floppy-disk mr-2"></i>Save Key
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="App.pickPhoto('key')" class="ghost-btn py-2 rounded-lg text-[11px] font-semibold text-slate-300">
+              <i class="fa-solid fa-image mr-1"></i>Key from photo
+            </button>
+            <button onclick="App.exportKey()" class="ghost-btn py-2 rounded-lg text-[11px] font-semibold text-slate-300">
+              <i class="fa-solid fa-share-nodes mr-1"></i>Share key file
+            </button>
+          </div>
+          <button onclick="App.deleteCurrentSection()" class="w-full text-xs text-rose-400 hover:text-rose-300 py-1">
+            <i class="fa-solid fa-trash-can mr-1"></i>Delete this section's key
+          </button>
+        </div>
+
+        <div class="lg:col-span-7 aurora-card p-6 rounded-2xl flex flex-col items-center justify-center text-center space-y-4">
+          <i class="fa-solid fa-camera-viewfinder text-5xl text-indigo-400"></i>
+          <h2 class="text-xl font-bold text-slate-100">Grade Student Sheets</h2>
+          <p class="text-xs text-slate-400 max-w-md">
+            Pick a section with a saved key, then start scanning. The camera reads the 7-digit Student ID, matches it to your roster and grades sheets continuously.
+          </p>
+          <div class="w-full max-w-sm text-left">
+            <label class="block text-xs font-medium text-slate-400 mb-1">Section to Grade Against</label>
+            <select id="grade-section-select" onchange="App.onGradeSectionChange()" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <option value="">— No saved keys yet —</option>
+            </select>
+            <p id="grade-key-hint" class="text-[11px] text-slate-500 mt-1">—</p>
+          </div>
+          <button id="start-grading-btn" onclick="App.openCameraModal('grade')" class="w-full max-w-sm aurora-btn py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center text-sm" disabled>
+            <i class="fa-solid fa-play mr-2"></i>Start Live Scanning
+          </button>
+          <button onclick="App.pickPhoto('grade')" class="w-full max-w-sm ghost-btn py-2.5 rounded-xl font-semibold text-slate-200 text-sm">
+            <i class="fa-solid fa-image mr-2"></i>Grade from a photo instead
+          </button>
+          <p class="text-[11px] text-slate-500 max-w-sm">
+            No webcam? Take photos of the sheets with your phone or scanner app and upload them one by one.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STUDENTS ============ -->
+    <section id="sec-students" class="hidden space-y-6">
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 aurora-card p-4 sm:p-6 rounded-2xl space-y-3">
+          <h2 class="text-lg font-semibold text-indigo-300"><i class="fa-solid fa-users mr-2"></i>Class Roster</h2>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            Paste or import <strong>ID, Name</strong> pairs once per section. Scanned sheets are then labelled with the student's real name, and you can see who has not been scanned yet.
+          </p>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Section</label>
+            <select id="roster-section" onchange="App.renderRoster()" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Paste roster (one student per line)</label>
+            <textarea id="roster-input" rows="4" placeholder="1234567, Juan Dela Cruz&#10;1234568, Maria Santos" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-indigo-500"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="App.importRoster()" class="aurora-btn py-2 rounded-lg text-xs font-semibold text-white">
+              <i class="fa-solid fa-user-plus mr-1"></i>Import / Add
+            </button>
+            <label class="ghost-btn py-2 rounded-lg text-xs font-semibold text-slate-200 flex items-center justify-center cursor-pointer">
+              <i class="fa-solid fa-file-csv mr-1"></i>CSV file
+              <input type="file" id="roster-file" accept=".csv,.txt" class="hidden" onchange="App.handleRosterFile(this)">
+            </label>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+              <span id="roster-count">0 students</span>
+              <button onclick="App.clearRoster()" class="text-rose-400 hover:text-rose-300">Clear</button>
+            </div>
+            <div id="roster-list" class="max-h-40 overflow-y-auto text-xs space-y-1 text-slate-300"></div>
+            <p id="roster-progress" class="text-[11px] text-emerald-300/90 mt-2"></p>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 aurora-card p-4 sm:p-6 rounded-2xl">
+          <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+            <h2 class="text-lg font-semibold text-indigo-300"><i class="fa-solid fa-table-list mr-2"></i>Scanned Results <span id="record-count" class="text-xs font-normal text-slate-400"></span></h2>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button onclick="App.clearSectionResults()" class="ghost-btn px-2.5 py-2 rounded-lg text-[11px] font-semibold text-rose-300" title="Delete every result for the selected section">
+                <i class="fa-solid fa-eraser mr-1"></i>Clear section
+              </button>
+              <button onclick="App.exportCSV()" class="ghost-btn px-2.5 py-2 rounded-lg text-[11px] font-semibold text-indigo-200">
+                <i class="fa-solid fa-file-csv mr-1"></i>CSV
+              </button>
+              <button onclick="App.backupAll()" class="ghost-btn px-2.5 py-2 rounded-lg text-[11px] font-semibold text-indigo-200" title="Save keys, roster and results to a file">
+                <i class="fa-solid fa-download mr-1"></i>Backup
+              </button>
+              <label class="ghost-btn px-2.5 py-2 rounded-lg text-[11px] font-semibold text-indigo-200 cursor-pointer" title="Restore from a backup file">
+                <i class="fa-solid fa-upload mr-1"></i>Restore
+                <input type="file" accept=".json" class="hidden" onchange="App.restoreBackup(this)">
+              </label>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            <select id="records-filter" onchange="App.updateRecordsTable()" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"></select>
+            <input type="text" id="records-search" oninput="App.updateRecordsTable()" placeholder="Search name or ID…" class="flex-1 min-w-[140px] bg-slate-900/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-[10px] uppercase text-slate-400 border-b border-slate-700">
+                <tr>
+                  <th class="p-2">Scanned</th>
+                  <th class="p-2">ID</th>
+                  <th class="p-2">Student</th>
+                  <th class="p-2">Section</th>
+                  <th class="p-2">Score</th>
+                  <th class="p-2">%</th>
+                  <th class="p-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="records-table-body" class="divide-y divide-slate-800"></tbody>
+            </table>
+            <p id="records-empty" class="text-xs text-slate-500 text-center py-8">No scans yet. Head to the Scanner tab to grade some sheets.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ANALYSIS ============ -->
+    <section id="sec-analysis" class="hidden space-y-6">
+      <div class="aurora-card p-4 sm:p-6 rounded-2xl">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+          <h2 class="text-lg font-semibold text-indigo-300"><i class="fa-solid fa-chart-column mr-2"></i>Class &amp; Item Analysis</h2>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <select id="analysis-section-select" onchange="App.renderAnalysis()" class="bg-slate-900/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"></select>
+            <label class="flex items-center gap-1 text-[11px] text-slate-400">Pass %<input type="number" id="pass-mark" min="1" max="100" value="75" onchange="App.renderAnalysis()" class="w-14 bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"></label>
+            <button onclick="App.printClassReport()" class="ghost-btn px-2.5 py-2 rounded-lg text-[11px] font-semibold text-indigo-200">
+              <i class="fa-solid fa-print mr-1"></i>Class report
+            </button>
+          </div>
+        </div>
+
+        <div id="analysis-empty" class="text-center py-10">
+          <i class="fa-solid fa-chart-simple text-4xl text-slate-600 mb-3"></i>
+          <p class="text-sm text-slate-400">Select a section with scanned results to see class statistics and per-question analysis.</p>
+          <button onclick="App.loadDemoData()" class="mt-4 ghost-btn px-4 py-2 rounded-lg text-xs font-semibold text-indigo-200">
+            <i class="fa-solid fa-flask mr-1"></i>Load a sample class to explore
+          </button>
+        </div>
+
+        <div id="analysis-body" class="hidden space-y-5">
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div class="stat-card"><p class="stat-label">Graded</p><p id="an-graded" class="stat-value">0</p></div>
+            <div class="stat-card"><p class="stat-label">Mean</p><p id="an-mean" class="stat-value">—</p></div>
+            <div class="stat-card"><p class="stat-label">Median</p><p id="an-median" class="stat-value">—</p></div>
+            <div class="stat-card"><p class="stat-label">Std. deviation</p><p id="an-sd" class="stat-value">—</p></div>
+            <div class="stat-card"><p class="stat-label">Passed</p><p id="an-pass" class="stat-value">—</p></div>
+            <div class="stat-card"><p class="stat-label">KR-20 reliability</p><p id="an-kr20" class="stat-value">—</p></div>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Score distribution</h3>
+            <div id="an-distribution" class="space-y-1.5"></div>
+          </div>
+
+          <div id="an-insights" class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100/90 leading-relaxed"></div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-300">
+              <thead class="bg-slate-900/80 text-[10px] uppercase text-slate-400 border-b border-slate-700">
+                <tr>
+                  <th class="p-2">Item</th>
+                  <th class="p-2">Key</th>
+                  <th class="p-2">Correct</th>
+                  <th class="p-2">Difficulty</th>
+                  <th class="p-2">Discrimination</th>
+                  <th class="p-2">Most-chosen wrong</th>
+                  <th class="p-2">Verdict</th>
+                  <th class="p-2"></th>
+                </tr>
+              </thead>
+              <tbody id="analysis-table-body" class="divide-y divide-slate-800"></tbody>
+            </table>
+            <p id="analysis-hint" class="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              <strong>Difficulty</strong> = share of the class that answered correctly. <strong>Discrimination</strong> = how well the item separates strong from weak students (0.30+ is good, below 0.10 or negative suggests a mis-keyed or confusing item). Click a row for the choice breakdown.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ CAMERA MODAL ============ -->
+  <div id="camera-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-md p-3">
+    <div class="aurora-card w-full max-w-4xl rounded-2xl overflow-hidden flex flex-col max-h-[95vh]">
+      <div class="p-3 border-b border-slate-700/60 flex justify-between items-center bg-slate-900/50">
+        <h3 id="modal-title" class="font-semibold text-indigo-200 text-sm">Align the sheet inside the frame</h3>
+        <button onclick="App.closeCameraModal()" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="p-3 sm:p-4 overflow-y-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div class="relative w-full aspect-[3/4] max-h-[52vh] bg-slate-950 rounded-xl overflow-hidden border border-slate-700/80">
+              <video id="webcam" class="hidden" playsinline></video>
+              <canvas id="scan-canvas" class="w-full h-full object-contain"></canvas>
+            </div>
+            <div class="flex items-center gap-2 mt-3 text-xs">
+              <span id="scan-status-dot" class="status-dot bg-amber-400"></span>
+              <span id="scan-status" class="text-slate-300">Looking for the sheet's 4 corner markers…</span>
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <p class="text-xs font-medium text-slate-400 mb-2">Detected sheet preview</p>
+            <div class="relative bg-slate-950 rounded-xl overflow-hidden border border-slate-700/80 flex items-center justify-center" style="min-height:240px;">
+              <canvas id="preview-canvas" width="320" height="400" class="max-w-full"></canvas>
+            </div>
+            <div id="scan-toast" class="mt-3 text-sm font-semibold text-center py-2 px-2 rounded-lg bg-slate-900/60 border border-slate-800 text-slate-400">
+              Waiting for the first scan…
+            </div>
+          </div>
+        </div>
+
+        <div id="confirm-row" class="hidden mt-4 flex gap-2">
+          <button id="confirm-primary" onclick="App.confirmPending()" class="flex-1 aurora-btn py-3 rounded-xl font-bold text-white shadow-lg text-sm">
+            <i class="fa-solid fa-check mr-2"></i>Save result
+          </button>
+          <button onclick="App.discardPending()" class="flex-1 ghost-btn py-3 rounded-xl font-bold text-slate-200 text-sm">
+            Discard
+          </button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <button id="manual-capture-btn" onclick="App.manualCapture()" class="ghost-btn py-3 rounded-xl font-semibold text-slate-200 text-sm">
+            <i class="fa-solid fa-bolt mr-2"></i>Capture now
+          </button>
+          <button onclick="App.closeCameraModal()" class="ghost-btn py-3 rounded-xl font-semibold text-slate-200 text-sm">
+            <i class="fa-solid fa-stop mr-2"></i>Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ REPORT MODAL ============ -->
+  <div id="report-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-md p-3">
+    <div class="aurora-card w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="p-3 border-b border-slate-700/60 flex justify-between items-center bg-slate-900/50">
+        <h3 class="font-semibold text-indigo-200 text-sm"><i class="fa-solid fa-file-lines mr-2"></i>Student Report</h3>
+        <div class="flex items-center gap-1">
+          <button onclick="App.printStudentReport()" class="ghost-btn px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-indigo-200"><i class="fa-solid fa-print mr-1"></i>Print</button>
+          <button onclick="App.closeReport()" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+      </div>
+      <div id="report-body" class="p-4 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- ============ HELP MODAL ============ -->
+  <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 backdrop-blur-md p-3">
+    <div class="aurora-card w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="p-3 border-b border-slate-700/60 flex justify-between items-center bg-slate-900/50">
+        <h3 class="font-semibold text-indigo-200 text-sm"><i class="fa-solid fa-circle-question mr-2"></i>How this works</h3>
+        <button onclick="App.closeHelp()" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="p-4 overflow-y-auto text-sm text-slate-300 space-y-3 leading-relaxed">
+        <ol class="list-decimal list-inside space-y-2">
+          <li><strong class="text-white">Generator</strong> — choose items and choices, download the PDF, print one copy as your key and blank copies for students.</li>
+          <li><strong class="text-white">Answer key</strong> — in Scanner, fill in the key sheet by hand, then either click the bubbles manually or scan the key sheet. Save it under a section name.</li>
+          <li><strong class="text-white">Roster</strong> — in Students, paste <code class="text-indigo-300">ID, Name</code> lines so scanned sheets become names instead of numbers.</li>
+          <li><strong class="text-white">Grade</strong> — start live scanning and pass sheets under the camera, or upload photos. Each sheet beeps once it is saved.</li>
+          <li><strong class="text-white">Analysis</strong> — see which items were hard, which wrong answer tempted the class, and print a class report.</li>
+        </ol>
+        <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-100/90">
+          <strong>Works offline.</strong> Everything — keys, roster, results — is stored in this browser on this device. Use <em>Backup</em> in the Students tab to move data to another device, and <em>Restore</em> to bring it back.
+        </div>
+        <p class="text-xs text-slate-400">Privacy: no photos and no student data ever leave the device. The engine runs entirely in this browser.</p>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="warp-buffer" width="800" height="1000" class="hidden-canvas"></canvas>
+  <input type="file" id="photo-input" accept="image/*" class="hidden">
+
+  <div id="page-toast" class="page-toast"></div>
+  <div id="print-area"></div>
+
+  <script src="omr.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
